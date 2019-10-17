@@ -36,8 +36,32 @@ class App extends Component {
       box:{},
       route:'signin',
       isSignedIn: false,
+      user: {
+        id: "",
+        name: "",
+        email: "",
+        entries: 0,
+        joined:""
+      }
     }
   }
+
+  loadUser = (data) => {
+    this.setState({user: {
+      id: data.id,
+      name: data.name,
+      email: data.email,
+      entries: data.entries,
+      joined:data.joined
+      }
+    })
+  }
+
+  // componentDidMount(){
+  //   fetch('http://localhost:3000/')
+  //   .then(response => response.json())
+  //   .then(console.log)
+  // }
 
   calculateFacelocation = (data) => {
     const clarifaiFace = data.outputs[0].data.regions[0].region_info.bounding_box;
@@ -65,48 +89,66 @@ class App extends Component {
     app.models.predict(
       Clarifai.FACE_DETECT_MODEL, 
       this.state.input)
-      .then(response => this.displayFaceLocation(this.calculateFacelocation(response)))
+      .then(response => {
+        if (response){
+          fetch('http://localhost:3000/image',{
+            method: 'put',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+              id: this.state.user.id
+            })
+          })
+          .then (response => response.json())
+          .then (count => {
+            this.setState(Object.assign(this.state.user, {entries: count}))
+          })
+        }
+        this.displayFaceLocation(this.calculateFacelocation(response))
+      })
         // do something with response _(response.outputs[0].data.regions[0].region_info.bounding_box);
-      .catch(err => console.log(err)) 
+      .catch(err => console.log(err)); 
+  }
+  
+
+
+  onRouteChange =( wherearewe ) => {
+    if (wherearewe === 'signout') {
+        this.setState({isSignedIn: false})
+      } else if (wherearewe === 'home') {
+        this.setState({isSignedIn:true})
+      } 
+    this.setState({ route: wherearewe });
+    }
+
+    render() {
+      const {isSignedIn, imageURL, box, route} = this.state
+      return (
+        <div className="App"> 
+          <Particles className='particles'
+            params={particlesOption} 
+          />
+          <Navigation isSignedIn={isSignedIn} onRouteChange={this.onRouteChange}/>
+          {route === 'home' 
+            ? <div>
+              <Logo />
+              <Rank name={this.state.user.name} entries={this.state.user.entries}/>
+              <ImageLinkForm 
+              onInputChange={this.onInputChange} 
+              onSubmitDetect={this.onSubmitDetect}/>
+              <FaceRecognition 
+              imageURL={imageURL}
+              box={box} />
+              </div>
+
+              : (this.state.route === 'signin'
+                ? <SignIn loadUser={this.loadUser} onRouteChange={this.onRouteChange}/>
+                : <Register loadUser={this.loadUser} onRouteChange={this.onRouteChange}/>
+                )
+          } 
+        </div>
+      )
+    }
   }
 
-onRouteChange =( wherearewe ) => {
-  if (wherearewe === 'signout') {
-      this.setState({isSignedIn: false})
-    } else if (wherearewe === 'home') {
-      this.setState({isSignedIn:true})
-    } 
-  this.setState({ route: wherearewe });
-  }
-
-  render() {
-    const {isSignedIn, imageURL, box, route} = this.state
-    return (
-      <div className="App"> 
-        <Particles className='particles'
-          params={particlesOption} 
-        />
-        <Navigation isSignedIn={isSignedIn} onRouteChange={this.onRouteChange}/>
-        {route === 'home' 
-          ? <div>
-            <Logo />
-            <Rank />
-            <ImageLinkForm 
-            onInputChange={this.onInputChange} 
-            onSubmitDetect={this.onSubmitDetect}/>
-            <FaceRecognition 
-            imageURL={imageURL}
-            box={box} />
-            </div>
-
-            : (this.state.route === 'signin'
-              ? <SignIn onRouteChange={this.onRouteChange}/>
-              : <Register onRouteChange={this.onRouteChange}/>
-              )
-        } 
-      </div>
-    )
-  }
-}
 
 export default App;
