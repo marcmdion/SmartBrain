@@ -8,11 +8,7 @@ import Register from './components/Register/Register';
 import FaceRecognition from './components/FaceRecognition/FaceRecognition';
 import './App.css';
 import Particles from 'react-particles-js';
-import Clarifai from 'clarifai';
 
-const app = new Clarifai.App({
- apiKey: '86aef2717afe4258a40232d7978eaac9'
-});
 
 
 const particlesOption = {
@@ -27,10 +23,7 @@ const particlesOption = {
   }
 }
 
-class App extends Component {
-  constructor(){
-    super();
-    this.state={
+const initialState = {
       input:'',
       imageURL:'',
       box:{},
@@ -44,6 +37,11 @@ class App extends Component {
         joined:""
       }
     }
+
+class App extends Component {
+  constructor(){
+    super();
+    this.state=initialState;
   }
 
   loadUser = (data) => {
@@ -86,12 +84,22 @@ class App extends Component {
 
   onSubmitDetect = () => {
     this.setState({imageURL: this.state.input});
-    app.models.predict(
-      Clarifai.FACE_DETECT_MODEL, 
-      this.state.input)
-      .then(response => {
+
+    // app.models.predict(
+    //   Clarifai.FACE_DETECT_MODEL, 
+    //   this.state.input)
+    //moving this to the backend
+    fetch('https://secret-thicket-41710.herokuapp.com/imageurl',{
+            method: 'post',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+              input: this.state.input
+            })
+          })
+    .then (response => response.json())
+    .then(response => {
         if (response){
-          fetch('http://localhost:3000/image',{
+          fetch('https://secret-thicket-41710.herokuapp.com/image',{
             method: 'put',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
@@ -102,6 +110,7 @@ class App extends Component {
           .then (count => {
             this.setState(Object.assign(this.state.user, {entries: count}))
           })
+          .catch(console.log('fetch error'))
         }
         this.displayFaceLocation(this.calculateFacelocation(response))
       })
@@ -113,7 +122,7 @@ class App extends Component {
 
   onRouteChange =( wherearewe ) => {
     if (wherearewe === 'signout') {
-        this.setState({isSignedIn: false})
+        this.setState(initialState)
       } else if (wherearewe === 'home') {
         this.setState({isSignedIn:true})
       } 
